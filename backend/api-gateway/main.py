@@ -4,6 +4,21 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import jwt
 from decouple import config
+import logging
+from logstash_async.handler import AsynchronousLogstashHandler
+
+# --- Logging Configuration (NEW) ---
+host = "logstash"
+port = 5044
+
+# Get the root logger
+logger = logging.getLogger()
+# Set the logger level
+logger.setLevel(logging.INFO)
+# Create a handler
+handler = AsynchronousLogstashHandler(host, port, database_path="logstash_events.db")
+# Add the handler to the logger
+logger.addHandler(handler)
 
 app = FastAPI()
 

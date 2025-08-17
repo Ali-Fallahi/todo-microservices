@@ -2,6 +2,41 @@
 
 services:
   #--------------------------------#
+  # ELK Stack for Centralized Logging
+  #--------------------------------#
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.9.2
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false # Disable security for local dev
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.9.2
+    container_name: logstash
+    volumes:
+      - ./logstash/pipeline:/usr/share/logstash/pipeline:ro
+    ports:
+      - "5044:5044"
+    depends_on:
+      - elasticsearch
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.9.2
+    container_name: kibana
+    ports:
+      - "15601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    depends_on:
+      - elasticsearch
+
+  #--------------------------------#
   # Core Infrastructure Services
   #--------------------------------#
   zookeeper:
@@ -108,5 +143,6 @@ services:
 
 # Define the named volumes used in the services
 volumes:
+  elasticsearch_data:
   user_postgres_data:
   todo_postgres_data:

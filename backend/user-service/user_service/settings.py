@@ -150,3 +150,27 @@ SIMPLE_JWT = {
     "SIGNING_KEY": config("JWT_SIGNING_KEY"),
     "ALGORITHM": "HS256",
 }
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "logstash": {
+            "level": "INFO",
+            "class": "logstash_async.handler.AsynchronousLogstashHandler",
+            "host": "logstash",
+            "port": 5044,
+            "database_path": "logstash_events.db",
+        },
+        "console": {
+            "class": "logging.StreamHandler",
+        },
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console", "logstash"],
+            "level": "INFO",
+            "propagate": True,
+        },
+    },
+}

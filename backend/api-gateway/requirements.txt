@@ -4,3 +4,4 @@ httpx==0.28.1
 requests==2.32.4
 PyJWT==2.10.1
 python-decouple==3.8
+python-logstash-async==4.0.2
