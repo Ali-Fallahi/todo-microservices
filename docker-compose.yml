@@ -1,67 +1,112 @@
-version: '3.8'
+# Note: 'version' attribute is obsolete and has been removed.
 
 services:
-  # --- Frontend Service (NEW) ---
-  frontend:
-    build: ./frontend
-    container_name: frontend
-    ports:
-      - "3000:80" # Map host port 3000 to container port 80 (Nginx default)
-    depends_on:
-      - api-gateway
-      
-  # --- API Gateway (NEW) ---
-  api-gateway:
-    build: ./backend/api-gateway
-    container_name: api_gateway
-    env_file:
-      - ./backend/api-gateway/.env
-    ports:
-      - "8000:8000" # The ONLY exposed port to the outside world
-    depends_on:
-      - user-service
-      - todo-service
+  #--------------------------------#
+  # Core Infrastructure Services
+  #--------------------------------#
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.3.0
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
 
-  # --- User Service ---
-  user-service:
-    build: ./backend/user-service
-    container_name: user_service
-    command: python manage.py runserver 0.0.0.0:8000
-    volumes:
-      - ./backend/user-service:/app
-    env_file:
-      - ./backend/user-service/.env
+  kafka:
+    image: confluentinc/cp-kafka:7.3.0
+    container_name: kafka
+    ports:
+      - "9092:9092"
     depends_on:
-      - user_db_postgres
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
 
   user_db_postgres:
-    image: postgres:16 
+    image: postgres:16
     container_name: user_db_postgres
     volumes:
       - user_postgres_data:/var/lib/postgresql/data/
     env_file:
       - ./backend/user-service/.env
-
-  # --- Todo Service ---
-  todo-service:
-    build: ./backend/todo-service
-    container_name: todo_service
-    command: python manage.py runserver 0.0.0.0:8000
-    volumes:
-      - ./backend/todo-service:/app
-    env_file:
-      - ./backend/todo-service/.env
-    depends_on:
-      - todo_db_postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   todo_db_postgres:
-    image: postgres:16 
+    image: postgres:16
     container_name: todo_db_postgres
     volumes:
       - todo_postgres_data:/var/lib/postgresql/data/
     env_file:
       - ./backend/todo-service/.env
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
+  #--------------------------------#
+  # Application Backend Services
+  #--------------------------------#
+  user-service:
+    build: ./backend/user-service
+    container_name: user_service
+    volumes:
+      - ./backend/user-service:/app
+    env_file:
+      - ./backend/user-service/.env
+    depends_on:
+      user_db_postgres:
+        condition: service_healthy # Wait for DB to be ready
+      kafka:
+        condition: service_started
+
+  todo-service:
+    build: ./backend/todo-service
+    container_name: todo_service
+    volumes:
+      - ./backend/todo-service:/app
+    env_file:
+      - ./backend/todo-service/.env
+    depends_on:
+      todo_db_postgres:
+        condition: service_healthy # Wait for DB to be ready
+      kafka:
+        condition: service_started
+
+  #--------------------------------#
+  # Gateway & Frontend Services
+  #--------------------------------#
+  api-gateway:
+    build: ./backend/api-gateway
+    container_name: api_gateway
+    ports:
+      - "8000:8000" # The only entry point for backend
+    env_file:
+      - ./backend/api-gateway/.env
+    depends_on:
+      - user-service
+      - todo-service
+
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    ports:
+      - "3000:80" # The only entry point for frontend
+    depends_on:
+      - api-gateway
+
+# Define the named volumes used in the services
 volumes:
   user_postgres_data:
   todo_postgres_data:

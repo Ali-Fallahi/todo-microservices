@@ -15,5 +15,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 5. Copy the project code
 COPY . .
 
-# 6. The command to run the application
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
+
+# The command to run the application
+CMD ["/start.sh"]
