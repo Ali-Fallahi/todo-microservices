@@ -1,0 +1,13 @@
+# Environment variables
+.env
+backend/.env
+backend/api-gateway/.env
+backend/todo-service/.env
+backend/user-service/.env
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Docker
+docker-compose.override.yml

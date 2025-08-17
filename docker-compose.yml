@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  # --- API Gateway (NEW) ---
+  api-gateway:
+    build: ./backend/api-gateway
+    container_name: api_gateway
+    env_file:
+      - ./backend/api-gateway/.env
+    ports:
+      - "8000:8000" # The ONLY exposed port to the outside world
+    depends_on:
+      - user-service
+      - todo-service
+
+  # --- User Service ---
+  user-service:
+    build: ./backend/user-service
+    container_name: user_service
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./backend/user-service:/app
+    env_file:
+      - ./backend/user-service/.env
+    depends_on:
+      - user_db_postgres
+
+  user_db_postgres:
+    image: postgres:16 
+    container_name: user_db_postgres
+    volumes:
+      - user_postgres_data:/var/lib/postgresql/data/
+    env_file:
+      - ./backend/user-service/.env
+
+  # --- Todo Service ---
+  todo-service:
+    build: ./backend/todo-service
+    container_name: todo_service
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./backend/todo-service:/app
+    env_file:
+      - ./backend/todo-service/.env
+    depends_on:
+      - todo_db_postgres
+
+  todo_db_postgres:
+    image: postgres:16 
+    container_name: todo_db_postgres
+    volumes:
+      - todo_postgres_data:/var/lib/postgresql/data/
+    env_file:
+      - ./backend/todo-service/.env
+
+volumes:
+  user_postgres_data:
+  todo_postgres_data:
