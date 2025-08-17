@@ -1,14 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../api'; // استفاده از سرویس api مرکزی
+import api from '../api';
 
 const RegistrationForm = () =>
 {
-    const [formData, setFormData] = useState({
-        username: '',
-        email: '',
-        password: '',
-    });
+    const [formData, setFormData] = useState({ username: '', email: '', password: '' });
     const [message, setMessage] = useState('');
     const [isError, setIsError] = useState(false);
     const navigate = useNavigate();
@@ -29,7 +25,7 @@ const RegistrationForm = () =>
             setMessage('Registration successful! Redirecting to login...');
             setTimeout(() =>
             {
-                navigate('/login'); // هدایت به صفحه لاگین
+                navigate('/login');
             }, 2000);
         } catch (error)
         {

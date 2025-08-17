@@ -12,7 +12,7 @@
 
 .App-header {
   width: 100%;
-  max-width: 450px; /* حداکثر عرض برای محتوا */
+  max-width: 450px; /* حداکثر عرض برای محتوای اصلی */
   text-align: center;
 }
 
@@ -101,5 +101,109 @@
 }
 
 .message.error {
+  color: #ff6b6b;
+}
+
+
+/* استایل‌های صفحه اصلی تسک‌ها */
+.main-container {
+  width: 100%;
+  max-width: 600px;
+  background-color: #3a3f4a;
+  padding: 2rem;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 2rem;
+}
+
+.logout-button {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 5px;
+  background-color: #555;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.logout-button:hover {
+  background-color: #777;
+}
+
+/* فرم افزودن تسک */
+.add-todo-form {
+  display: flex;
+  margin-bottom: 1.5rem;
+}
+
+.add-todo-form .form-input {
+  flex-grow: 1;
+  margin-right: 0.5rem;
+}
+
+.add-todo-form .form-button {
+  width: auto;
+}
+
+/* لیست تسک‌ها */
+.todo-list {
+  text-align: left;
+}
+
+.todo-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #2c3038;
+  padding: 1rem;
+  border-radius: 5px;
+  margin-bottom: 0.5rem;
+  transition: background-color 0.2s;
+}
+
+.todo-item.completed {
+  background-color: #444;
+}
+
+.todo-item.completed span {
+  text-decoration: line-through;
+  color: #888;
+}
+
+.todo-item-title {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  flex-grow: 1;
+  word-break: break-word;
+}
+
+.todo-item-title input[type="checkbox"] {
+  margin-right: 1rem;
+  pointer-events: none; /* تا کلیک فقط روی دیو والد باشد */
+}
+
+.delete-button {
+  background: none;
+  border: none;
+  color: #aaa;
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: color 0.2s;
+  padding-left: 1rem;
+}
+
+.delete-button:hover {
   color: #ff6b6b;
 }

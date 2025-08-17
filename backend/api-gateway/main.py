@@ -30,7 +30,7 @@ JWT_SECRET_KEY = config("JWT_SIGNING_KEY")
 client = httpx.AsyncClient()
 
 
-@app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
+@app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
 async def route_request(request: Request, path: str):
     destination_service = None
 

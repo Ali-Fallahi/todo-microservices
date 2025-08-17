@@ -3,26 +3,10 @@ import { Routes, Route, Navigate, Link } from 'react-router-dom';
 import AuthContext from './context/AuthContext';
 import LoginForm from './components/LoginForm';
 import RegistrationForm from './components/RegistrationForm';
+import TodoPage from './pages/TodoPage'; // <-- فقط ایمپورت می‌کنیم
 import './App.css';
 
-// کامپوننت صفحه اصلی اپلیکیشن (محافظت شده)
-const TodoPage = () =>
-{
-  const { logout } = useContext(AuthContext);
-  return (
-    <div className="App">
-      <header className="App-header">
-        <h1>Todo List</h1>
-        <p>Your tasks will appear here soon!</p>
-        <button onClick={logout} className="form-button" style={{ maxWidth: '200px' }}>
-          Logout
-        </button>
-      </header>
-    </div>
-  );
-};
-
-// کامپوننت صفحه احراز هویت (عمومی)
+// کامپوننت صفحه احراز هویت که فرم لاگین یا ثبت‌نام را نمایش می‌دهد
 const AuthPage = ({ isLogin = true }) =>
 {
   return (
@@ -60,8 +44,8 @@ function App()
         path="/"
         element={isAuthenticated ? <TodoPage /> : <Navigate to="/login" />}
       />
-      {/* A catch-all route to redirect to login if no other route matches */}
-      <Route path="*" element={<Navigate to="/login" />} />
+      {/* اگر هیچ مسیری پیدا نشد، کاربر را به مسیر اصلی هدایت کن */}
+      <Route path="*" element={<Navigate to="/" />} />
     </Routes>
   );
 }

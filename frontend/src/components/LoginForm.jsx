@@ -4,13 +4,10 @@ import api from '../api';
 
 const LoginForm = () =>
 {
-    const [formData, setFormData] = useState({
-        username: '',
-        password: '',
-    });
+    const [formData, setFormData] = useState({ username: '', password: '' });
     const [message, setMessage] = useState('');
     const [isError, setIsError] = useState(false);
-    const { login } = useContext(AuthContext); // دریافت تابع login از context
+    const { login } = useContext(AuthContext);
 
     const handleChange = (e) =>
     {
@@ -25,7 +22,6 @@ const LoginForm = () =>
         try
         {
             const response = await api.post('/auth/token/', formData);
-            // فراخوانی تابع login از context با توکن‌های دریافتی
             login(response.data.access, response.data.refresh);
         } catch (error)
         {
