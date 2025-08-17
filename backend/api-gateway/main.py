@@ -1,10 +1,25 @@
 import httpx
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 import jwt
 from decouple import config
 
 app = FastAPI()
+
+# --- CORS Configuration (NEW) ---
+origins = [
+    "http://localhost:3000",  # The address of our React app
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all methods
+    allow_headers=["*"],  # Allow all headers
+)
+# --- End of CORS Configuration ---
 
 # Configuration
 USER_SERVICE_URL = "http://user-service:8000"

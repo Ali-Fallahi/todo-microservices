@@ -1,6 +1,15 @@
 version: '3.8'
 
 services:
+  # --- Frontend Service (NEW) ---
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    ports:
+      - "3000:80" # Map host port 3000 to container port 80 (Nginx default)
+    depends_on:
+      - api-gateway
+      
   # --- API Gateway (NEW) ---
   api-gateway:
     build: ./backend/api-gateway
