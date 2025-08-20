@@ -49,6 +49,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "tasks.logging_middleware.StructuredLoggingMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -134,26 +135,44 @@ STATIC_URL = "static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# settings.py
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
+    # فرمت‌کننده‌ها تعریف می‌کنند که هر لاگ چه شکلی داشته باشد
+    "formatters": {
+        "verbose": {
+            "format": "{levelname} {asctime} {module} {message}",
+            "style": "{",
+        },
+    },
+    # هندلرها تعریف می‌کنند که لاگ‌ها به کجا ارسال شوند
     "handlers": {
         "logstash": {
             "level": "INFO",
             "class": "logstash_async.handler.AsynchronousLogstashHandler",
             "host": "logstash",
             "port": 5044,
-            "database_path": "logstash_events.db",
+            "database_path": None,  # غیرفعال کردن ذخیره در دیتابیس برای سادگی
         },
         "console": {
             "class": "logging.StreamHandler",
+            "formatter": "verbose",
         },
     },
+    # لاگرها نقطه ورود اصلی برای ارسال لاگ هستند
     "loggers": {
         "django": {
-            "handlers": ["console", "logstash"],
+            "handlers": ["console"],  # لاگ‌های خود جنگو فقط در کنسول نمایش داده شوند
             "level": "INFO",
             "propagate": True,
+        },
+        # این لاگر جدید مخصوص Middleware ماست
+        "accounts.logging_middleware": {
+            "handlers": ["logstash", "console"],
+            "level": "INFO",
+            "propagate": False,  # جلوگیری از ارسال دوباره لاگ
         },
     },
 }

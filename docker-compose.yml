@@ -1,15 +1,53 @@
-# Note: 'version' attribute is obsolete and has been removed.
-
 services:
   #--------------------------------#
-  # ELK Stack for Centralized Logging
+  # Modern Kafka Stack (KRaft Mode)
+  #--------------------------------#
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    environment:
+      # --- KRaft Mode Configuration ---
+      CLUSTER_ID: '6nS2H4XUTT-Fi3OmSsPIyg'
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:29093'
+      
+      # --- Network Listener Configuration ---
+      KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:9092,CONTROLLER://kafka:29093'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:9092'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT'
+      
+      # --- General Kafka Settings ---
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "8080:8080"
+    depends_on:
+      - kafka
+    environment:
+      KAFKA_CLUSTERS_0_NAME: 'local-kafka'
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: 'kafka:9092'
+
+  #--------------------------------#
+  # Centralized Logging Stack (ELK)
   #--------------------------------#
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.9.2
     container_name: elasticsearch
     environment:
       - discovery.type=single-node
-      - xpack.security.enabled=false # Disable security for local dev
+      - xpack.security.enabled=false
     ports:
       - "9200:9200"
       - "9300:9300"
@@ -37,38 +75,13 @@ services:
       - elasticsearch
 
   #--------------------------------#
-  # Core Infrastructure Services
+  # Databases
   #--------------------------------#
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.3.0
-    container_name: zookeeper
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-
-  kafka:
-    image: confluentinc/cp-kafka:7.3.0
-    container_name: kafka
-    ports:
-      - "9092:9092"
-    depends_on:
-      - zookeeper
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-
   user_db_postgres:
     image: postgres:16
     container_name: user_db_postgres
     volumes:
-      - user_postgres_data:/var/lib/postgresql/data/
+      - user_postgres_data:/var/lib/postgresql/data
     env_file:
       - ./backend/user-service/.env
     healthcheck:
@@ -81,7 +94,7 @@ services:
     image: postgres:16
     container_name: todo_db_postgres
     volumes:
-      - todo_postgres_data:/var/lib/postgresql/data/
+      - todo_postgres_data:/var/lib/postgresql/data
     env_file:
       - ./backend/todo-service/.env
     healthcheck:
@@ -102,7 +115,7 @@ services:
       - ./backend/user-service/.env
     depends_on:
       user_db_postgres:
-        condition: service_healthy # Wait for DB to be ready
+        condition: service_healthy
       kafka:
         condition: service_started
 
@@ -115,18 +128,18 @@ services:
       - ./backend/todo-service/.env
     depends_on:
       todo_db_postgres:
-        condition: service_healthy # Wait for DB to be ready
+        condition: service_healthy
       kafka:
         condition: service_started
 
   #--------------------------------#
-  # Gateway & Frontend Services
+  # Gateway & Frontend
   #--------------------------------#
   api-gateway:
     build: ./backend/api-gateway
     container_name: api_gateway
     ports:
-      - "8000:8000" # The only entry point for backend
+      - "8000:8000"
     env_file:
       - ./backend/api-gateway/.env
     depends_on:
@@ -137,11 +150,11 @@ services:
     build: ./frontend
     container_name: frontend
     ports:
-      - "3000:80" # The only entry point for frontend
+      - "3000:80"
     depends_on:
       - api-gateway
 
-# Define the named volumes used in the services
+# Named volumes for data persistence
 volumes:
   elasticsearch_data:
   user_postgres_data:

@@ -1,3 +1,5 @@
+# English Comments as requested
+
 import httpx
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
@@ -6,62 +8,94 @@ import jwt
 from decouple import config
 import logging
 from logstash_async.handler import AsynchronousLogstashHandler
+import time
+import uuid
+from routing_config import ROUTES  # Import our clean routing map
 
-# --- Logging Configuration (NEW) ---
+# --- Logging Configuration ---
 host = "logstash"
 port = 5044
+gateway_logger = logging.getLogger("api_gateway_logger")
+gateway_logger.setLevel(logging.INFO)
+gateway_logger.addHandler(AsynchronousLogstashHandler(host, port, database_path=None))
 
-# Get the root logger
-logger = logging.getLogger()
-# Set the logger level
-logger.setLevel(logging.INFO)
-# Create a handler
-handler = AsynchronousLogstashHandler(host, port, database_path="logstash_events.db")
-# Add the handler to the logger
-logger.addHandler(handler)
-
+# --- FastAPI App Initialization ---
 app = FastAPI()
 
-# --- CORS Configuration (NEW) ---
+# --- CORS Middleware ---
 origins = [
-    "http://localhost:3000",  # The address of our React app
+    "http://localhost:3000",
 ]
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],  # Allow all methods
-    allow_headers=["*"],  # Allow all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
-# --- End of CORS Configuration ---
 
-# Configuration
-USER_SERVICE_URL = "http://user-service:8000"
-TODO_SERVICE_URL = "http://todo-service:8000"
+
+# --- Structured Logging Middleware ---
+@app.middleware("http")
+async def structured_logging_middleware(request: Request, call_next):
+    start_time = time.time()
+    request_id = str(uuid.uuid4())
+
+    response = await call_next(request)
+
+    duration = time.time() - start_time
+
+    user_id = None
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header.split(" ")[1]
+        try:
+            payload = jwt.decode(
+                token,
+                config("JWT_SIGNING_KEY"),
+                algorithms=["HS256"],
+                options={"verify_signature": False},
+            )
+            user_id = payload.get("user_id")
+        except jwt.PyJWTError:
+            user_id = "invalid_token"
+
+    log_data = {
+        "log_source": "api_gateway",
+        "path": request.url.path,
+        "method": request.method,
+        "status_code": response.status_code,
+        "duration_ms": int(duration * 1000),
+        "request_id": request_id,
+        "user_id": user_id,
+        "remote_addr": request.client.host,
+    }
+    gateway_logger.info("Gateway request handled", extra={"structured_log": log_data})
+    return response
+
+
+# --- Configuration Constants ---
 JWT_SECRET_KEY = config("JWT_SIGNING_KEY")
-
-# A client that can make requests to other services
 client = httpx.AsyncClient()
 
 
+# --- Main Smart Router ---
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
 async def route_request(request: Request, path: str):
-    destination_service = None
 
-    # 1. Determine the destination service based on the path
-    if path.startswith("auth/"):
-        destination_service = USER_SERVICE_URL
-        path = path.replace("auth/", "api/accounts/", 1)
-    elif path.startswith("tasks/"):
-        destination_service = TODO_SERVICE_URL
-        path = path.replace("tasks/", "api/tasks/", 1)
-    else:
-        return JSONResponse(status_code=404, content={"detail": "Not Found"})
+    # 1. Find the correct route from our configuration map
+    matched_route = None
+    for route in ROUTES:
+        if path.startswith(route["path_prefix"]):
+            matched_route = route
+            break
 
-    # 2. Extract user ID from JWT for protected routes
+    if not matched_route:
+        return JSONResponse(status_code=404, content={"detail": "Endpoint not found"})
+
+    # 2. Authenticate if the route is marked as protected
     user_id = None
-    if destination_service == TODO_SERVICE_URL:
+    if matched_route["protected"]:
         auth_header = request.headers.get("Authorization")
         if not auth_header or not auth_header.startswith("Bearer "):
             return JSONResponse(
@@ -75,28 +109,30 @@ async def route_request(request: Request, path: str):
             user_id = payload.get("user_id")
             if not user_id:
                 return JSONResponse(
-                    status_code=401, content={"detail": "Invalid token."}
+                    status_code=401, content={"detail": "Invalid token payload."}
                 )
-        except jwt.ExpiredSignatureError:
+        except jwt.PyJWTError:
             return JSONResponse(
-                status_code=401, content={"detail": "Token has expired."}
+                status_code=401,
+                content={"detail": "Invalid token signature or format."},
             )
-        except jwt.InvalidTokenError:
-            return JSONResponse(status_code=401, content={"detail": "Invalid token."})
 
-    # 3. Forward the request to the destination service
-    url = f"{destination_service}/{path}"
+    # 3. Correctly rewrite the path to avoid double slashes
+    rest_of_path = path[
+        len(matched_route["path_prefix"]) :
+    ]  # Safely get the rest of the path
+    target_path = matched_route["rewrite_prefix"] + rest_of_path
+
+    url = f"{matched_route['target_service']}{target_path}"
+
     headers = dict(request.headers)
-
-    # Add the user ID header for the downstream service
     if user_id:
         headers["X-User-ID"] = str(user_id)
-
-    # Remove host header to avoid conflicts
     headers.pop("host", None)
 
     data = await request.body()
 
+    # 4. Forward the request to the correct downstream service
     try:
         response = await client.request(
             method=request.method,
@@ -111,6 +147,5 @@ async def route_request(request: Request, path: str):
             headers=dict(response.headers),
         )
     except httpx.RequestError as e:
-        return JSONResponse(
-            status_code=503, content={"detail": "Service unavailable.", "error": str(e)}
-        )
+        gateway_logger.error(f"Service unavailable: {str(e)}")
+        return JSONResponse(status_code=503, content={"detail": "Service unavailable."})
