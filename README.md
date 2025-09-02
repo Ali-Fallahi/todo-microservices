@@ -55,14 +55,13 @@ Gateway تصمیم می‌گیرد که درخواست مربوط به کدام 
 برای اجرای پروژه، فقط به Docker و Docker Compose نیاز دارید.
 
 ۱. کلون کردن پروژه
-git clone [آدرس-ریپازیتوری-شما]
-cd [نام-پوشه-پروژه]
-
+```
+git clone Ali-Fallahi/todo-microservices-django
+```
 ۲. ساخت فایل‌های .env (مهم‌ترین بخش!)
 برای هر سرویس بک‌اند، یک فایل .env برای نگهداری اطلاعات حساس نیاز داریم.
 
-۱. برای User Service:
-یک فایل در مسیر backend/user-service/.env بسازید:
+۱. برای User Service: یک فایل در مسیر backend/user-service/.env بسازید:
 ```
 SECRET_KEY=your-strong-secret-key-for-user-service
 JWT_SIGNING_KEY=a-very-secret-key-that-must-be-the-same
@@ -71,9 +70,7 @@ POSTGRES_USER=user
 POSTGRES_PASSWORD=password
 POSTGRES_HOST=user_db_postgres
 ```
-
-۲. برای Todo Service:
-یک فایل در مسیر backend/todo-service/.env بسازید:
+۲. برای Todo Service: یک فایل در مسیر backend/todo-service/.env بسازید:
 ```
 SECRET_KEY=your-strong-secret-key-for-todo-service
 POSTGRES_DB=todo_db
@@ -81,15 +78,12 @@ POSTGRES_USER=user
 POSTGRES_PASSWORD=password
 POSTGRES_HOST=todo_db_postgres
 ```
-۳. برای API Gateway:
-یک فایل در مسیر backend/api-gateway/.env بسازید:
+۳. برای API Gateway: یک فایل در مسیر backend/api-gateway/.env بسازید:
 ```
 JWT_SIGNING_KEY=a-very-secret-key-that-must-be-the-same
 ```
 ⚠️ نکته بسیار مهم
-
-مقدار JWT_SIGNING_KEY باید در user-service و api-gateway دقیقا یکسان باشد.
-چرا؟ چون user-service با این کلید توکن را امضا (Sign) می‌کند و api-gateway با همان کلید، امضا را بررسی (Verify) می‌کند تا از معتبر بودن توکن مطمئن شود.
+مقدار JWT_SIGNING_KEY باید در user-service و api-gateway دقیقا یکسان باشد. چرا؟ چون user-service با این کلید توکن را امضا (Sign) می‌کند و api-gateway با همان کلید، امضا را بررسی (Verify) می‌کند تا از معتبر بودن توکن مطمئن شود.
 
 ۳. اجرا با Docker Compose
 در ریشه اصلی پروژه، دستور زیر را اجرا کنید:
@@ -101,12 +95,39 @@ docker-compose up --build
 اپلیکیشن: http://localhost:3000
 ```
 API Gateway: http://localhost:8000
-```
+
 Kafka UI (رابط کاربری کافکا): http://localhost:8080
 
 Kibana (رابط کاربری لاگ‌ها): http://localhost:15601
+```
+🔬 نحوه استفاده از API
+می‌توانید از طریق ابزارهایی مانند Postman یا cURL با API تعامل کنید.
 
-🔬 مفاهیم کلیدی در این پروژه
+۱. ثبت‌نام کاربر جدید
+یک درخواست POST به API Gateway ارسال کنید تا کاربر جدیدی در user-service ساخته شود.
+```
+curl -X POST http://localhost:8000/auth/register/ \
+-H "Content-Type: application/json" \
+-d '{"username": "testuser", "email": "test@example.com", "password": "strongpassword123"}'
+```
+۲. دریافت توکن (لاگین)
+با نام کاربری و رمز عبور خود، یک توکن دسترسی (Access Token) دریافت کنید.
+```
+curl -X POST http://localhost:8000/auth/token/ \
+-H "Content-Type: application/json" \
+-d '{"username": "testuser", "password": "strongpassword123"}'
+```
+در پاسخ، یک access توکن دریافت خواهید کرد که برای مراحل بعدی نیاز است.
+
+۳. حذف کاربر
+برای تست کردن سناریوی کافکا، می‌توانید کاربری که ساختید را حذف کنید. توکن دریافتی از مرحله قبل را در هدر Authorization قرار دهید.
+```
+curl -X DELETE http://localhost:8000/auth/profile/ \
+-H "Authorization: Bearer <YOUR_ACCESS_TOKEN>"
+```
+پس از اجرای این دستور، user-service کاربر را حذف کرده و یک رویداد به کافکا ارسال می‌کند. todo-service این رویداد را دریافت کرده و تسک‌های مربوط به این کاربر را (اگر وجود داشته باشد) حذف می‌کند.
+
+🧠 مفاهیم کلیدی در این پروژه
 API Gateway
 این سرویس دروازه اصلی ورود به سیستم ماست:
 
